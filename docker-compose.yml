@@ -1,0 +1,50 @@
+version: '2'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    container_name: nginx-proxy
+    network_mode: bridge
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - $PWD/certs:/etc/nginx/certs:ro
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+      - $PWD/htpasswd:/etc/nginx/htpasswd
+    labels:
+      - com.github.jrcs.letsencrypt_nginx_proxy_companion.nginx_proxy
+    environment:
+      - ENABLE_IPV6=true
+      - DEFAULT_HOST=example.com
+
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    volumes_from:
+      - nginx-proxy
+    volumes:
+      - $PWD/certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - DEBUG=true
+
+  whoami:
+    image: jwilder/whoami
+    container_name: whoami
+    network_mode: bridge
+    environment:
+      - VIRTUAL_HOST=example.com
+      - VIRTUAL_PORT=8000
+      - LETSENCRYPT_HOST=example.com
+      - LETSENCRYPT_EMAIL=user@example.com
+
+  jenkins:
+    image: jenkins
+    container_name: jenkins
+    network_mode: bridge
+    environment:
+      - VIRTUAL_HOST=jenkins.example.com
+      - VIRTUAL_PORT=8080
+      - LETSENCRYPT_HOST=jenkins.example.com
+      - LETSENCRYPT_EMAIL=user@example.com
